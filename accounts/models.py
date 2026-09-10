@@ -68,3 +68,11 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.full_name or self.phone_number
+
+    @property
+    def role(self):
+        if self.is_superuser:
+            return 'admin'
+        if self.is_staff:
+            return 'staff'
+        return 'customer'

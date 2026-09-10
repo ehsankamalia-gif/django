@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}User Directory{% endblock %}
+{% block content %}
+    <h1 class="mb-4">User Directory</h1>
+    <div id="user-directory-app" v-cloak>
+        <div v-if="loading" class="text-muted">Loading…</div>
+        <table v-else class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Phone number</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Active</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="u in users" :key="u.id">
+                    <td>{% verbatim %}{{ u.phone_number }}{% endverbatim %}</td>
+                    <td>{% verbatim %}{{ u.full_name || '—' }}{% endverbatim %}</td>
+                    <td><span class="badge" :class="roleBadge(u.role)">{% verbatim %}{{ u.role }}{% endverbatim %}</span></td>
+                    <td>{% verbatim %}{{ u.is_active ? 'Yes' : 'No' }}{% endverbatim %}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
+{% block scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            Vue.createApp({
+                data() {
+                    return { users: [], loading: true };
+                },
+                methods: {
+                    roleBadge(role) {
+                        return { admin: 'bg-danger', staff: 'bg-primary', customer: 'bg-secondary' }[role] || 'bg-secondary';
+                    },
+                },
+                mounted() {
+                    fetch("{% url 'accounts:api_user_list' %}")
+                        .then((res) => res.json())
+                        .then((data) => {
+                            this.users = data.users;
+                            this.loading = false;
+                        });
+                },
+            }).mount('#user-directory-app');
+        });
+    </script>
+{% endblock %}

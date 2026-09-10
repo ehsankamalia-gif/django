@@ -5,7 +5,13 @@
         <div class="col-md-8">
             {% if user.is_authenticated %}
                 <h1>Welcome, {{ user.get_short_name }}</h1>
-                <p class="text-muted">You are signed in with mobile number {{ user.phone_number }}.</p>
+                <p class="text-muted">
+                    You are signed in with mobile number {{ user.phone_number }}
+                    &mdash; role: <span class="badge bg-secondary">{{ user.role }}</span>
+                </p>
+                {% if user.is_staff %}
+                    <a href="{% url 'accounts:staff_dashboard' %}" class="btn btn-primary btn-sm">Go to Staff Dashboard</a>
+                {% endif %}
             {% else %}
                 <h1>Welcome</h1>
                 <p class="text-muted">Log in or sign up with your mobile number to continue.</p>

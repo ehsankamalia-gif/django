@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Manage Staff &amp; Permissions{% endblock %}
+{% block content %}
+    <h1 class="mb-4">Manage Staff &amp; Permissions</h1>
+    {% csrf_token %}
+    <div id="staff-management-app" v-cloak>
+        <div v-if="loading" class="text-muted">Loading…</div>
+        <div v-else class="row">
+            <div class="col-md-4">
+                <div class="list-group">
+                    <button
+                        v-for="u in users"
+                        :key="u.id"
+                        type="button"
+                        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                        :class="{ active: selected && selected.id === u.id }"
+                        @click="select(u)"
+                    >
+                        <span>
+                            {% verbatim %}{{ u.full_name || u.phone_number }}{% endverbatim %}
+                            <br><small :class="selected && selected.id === u.id ? '' : 'text-muted'">{% verbatim %}{{ u.phone_number }}{% endverbatim %}</small>
+                        </span>
+                        <span class="badge rounded-pill" :class="u.is_staff_flag ? 'bg-primary' : 'bg-secondary'">
+                            {% verbatim %}{{ u.is_staff_flag ? 'staff' : 'customer' }}{% endverbatim %}
+                        </span>
+                    </button>
+                    <p v-if="!users.length" class="text-muted mt-2">No non-admin users yet.</p>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div v-if="!selected" class="text-muted">Select a user to manage their access.</div>
+                <div v-else>
+                    <h2 class="h5">{% verbatim %}{{ selected.full_name || selected.phone_number }}{% endverbatim %}</h2>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="staffToggle"
+                               v-model="selected.is_staff_flag" @change="toggleStaff">
+                        <label class="form-check-label" for="staffToggle">Staff member</label>
+                    </div>
+
+                    <div v-if="selected.is_staff_flag">
+                        <div v-if="permissionsLoading" class="text-muted">Loading permissions…</div>
+                        <div v-else>
+                            <div v-if="!available.length" class="text-muted mb-3">No assignable permissions found yet.</div>
+                            <div v-for="(perms, group) in groupedPermissions" :key="group" class="mb-3">
+                                <h3 class="h6 text-uppercase text-muted">{% verbatim %}{{ group }}{% endverbatim %}</h3>
+                                <div class="form-check" v-for="p in perms" :key="p.id">
+                                    <input class="form-check-input" type="checkbox" :id="'perm-' + p.id"
+                                           :value="p.id" v-model="assignedIds">
+                                    <label class="form-check-label" :for="'perm-' + p.id">{% verbatim %}{{ p.label }}{% endverbatim %}</label>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" @click="savePermissions" :disabled="saving">
+                                {% verbatim %}{{ saving ? 'Saving…' : 'Save permissions' }}{% endverbatim %}
+                            </button>
+                            <span v-if="saved" class="text-success ms-2">Saved.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            function csrfToken() {
+                const match = document.cookie.match(/csrftoken=([^;]+)/);
+                return match ? match[1] : '';
+            }
+
+            Vue.createApp({
+                data() {
+                    return {
+                        users: [],
+                        selected: null,
+                        available: [],
+                        assignedIds: [],
+                        loading: true,
+                        permissionsLoading: false,
+                        saving: false,
+                        saved: false,
+                    };
+                },
+                computed: {
+                    groupedPermissions() {
+                        const groups = {};
+                        for (const p of this.available) {
+                            const key = p.app_label + '.' + p.model;
+                            (groups[key] = groups[key] || []).push(p);
+                        }
+                        return groups;
+                    },
+                },
+                methods: {
+                    async loadUsers() {
+                        const res = await fetch("{% url 'accounts:api_user_list' %}");
+                        const data = await res.json();
+                        this.users = data.users.map((u) => ({ ...u, is_staff_flag: u.role === 'staff' }));
+                        this.loading = false;
+                    },
+                    select(u) {
+                        this.selected = u;
+                        this.saved = false;
+                        this.available = [];
+                        this.assignedIds = [];
+                        if (u.is_staff_flag) this.loadPermissions(u.id);
+                    },
+                    async loadPermissions(userId) {
+                        this.permissionsLoading = true;
+                        const res = await fetch(`/accounts/api/users/${userId}/permissions/`);
+                        const data = await res.json();
+                        this.available = data.available;
+                        this.assignedIds = data.assigned_ids;
+                        this.permissionsLoading = false;
+                    },
+                    async toggleStaff() {
+                        this.saved = false;
+                        const res = await fetch(`/accounts/api/users/${this.selected.id}/role/`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                            body: JSON.stringify({ is_staff: this.selected.is_staff_flag }),
+                        });
+                        const data = await res.json();
+                        const idx = this.users.findIndex((u) => u.id === this.selected.id);
+                        const updated = { ...data.user, is_staff_flag: data.user.role === 'staff' };
+                        if (idx !== -1) this.users[idx] = updated;
+                        this.selected = updated;
+                        if (updated.is_staff_flag) {
+                            this.loadPermissions(updated.id);
+                        } else {
+                            this.available = [];
+                            this.assignedIds = [];
+                        }
+                    },
+                    async savePermissions() {
+                        this.saving = true;
+                        this.saved = false;
+                        await fetch(`/accounts/api/users/${this.selected.id}/permissions/`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                            body: JSON.stringify({ permission_ids: this.assignedIds }),
+                        });
+                        this.saving = false;
+                        this.saved = true;
+                    },
+                },
+                mounted() {
+                    this.loadUsers();
+                },
+            }).mount('#staff-management-app');
+        });
+    </script>
+{% endblock %}

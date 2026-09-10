@@ -1,0 +1,27 @@
+{
+  "name": "customer_creditor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "node scripts/sync-vendor-assets.js",
+    "sync-vendor": "node scripts/sync-vendor-assets.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ehsankamalia-gif/django.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ehsankamalia-gif/django/issues"
+  },
+  "homepage": "https://github.com/ehsankamalia-gif/django#readme",
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "vue": "^3.5.42"
+  }
+}

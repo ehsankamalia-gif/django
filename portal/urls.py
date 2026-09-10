@@ -12,6 +12,7 @@ urlpatterns = [
     path('running-ledger/', views.running_ledger_view, name='running_ledger'),
     path('api/customer/<int:customer_id>/', views.get_customer_data, name='get_customer_data'),
     path('admin/credit-customers/', views.credit_customers_view, name='credit_customers'),
+    path('credit-customers/', views.credit_customers_view, name='credit_customers_no_prefix'),
     path('custom-admin/', views.custom_admin_dashboard_view, name='custom_admin_dashboard'),
     path('custom-admin/customers/', views.custom_admin_customers_view, name='custom_admin_customers'),
     path('custom-admin/sales/', views.custom_admin_sales_view, name='custom_admin_sales'),
